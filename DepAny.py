@@ -32,11 +32,11 @@ def Capture():
     ret, frame = cap.read()
 
     # 相対値固定のため、余分な範囲を計算しないような画像のトリム設定
-    ystart = 180
-    yfinish= 400
+    ystart = 170
+    yfinish= 375
     hight = yfinish -ystart
-    xstart = 350
-    xfinish = 470
+    xstart = 245
+    xfinish = 360
     width = xfinish - xstart
     
     cropped_frame = frame[ystart:ystart+hight, xstart:xstart+width]
@@ -151,7 +151,7 @@ def DepAny():
             min = depth.min().item()
             median = depth.mean().item()
 
-            Cam_to_Top = float(0.365) # User Difined Parameter[m]
+            Cam_to_Top = float(0.465) # User Difined Parameter[m]
             Top_to_Plate = float(0.090) # User Difined Parameter[m]
 
 
@@ -163,19 +163,12 @@ def DepAny():
             abs_mean = Cam_to_Top + Top_to_Plate - depth_abs.mean().item()
             abs_median = Cam_to_Top + Top_to_Plate - depth_abs.median().item()
 
-
-            # raw image index
-            max_index = depth.argmax() 
-            max_position = np.unravel_index(max_index.cpu().numpy(), depth.shape)
-            min_index = depth.argmin() 
-            min_position = np.unravel_index(min_index.cpu().numpy(), depth.shape)
-
             # 降下距離導出のためネギ部分のみを切り取り
             ycstart = 0
-            ycfinish = 140
+            ycfinish = 100
             hc = ycfinish - ycstart
-            xcstart = 20
-            xcfinish = 120
+            xcstart = 10
+            xcfinish = 110
             wc = xcfinish - xcstart
 
 
@@ -188,11 +181,27 @@ def DepAny():
 
             size = depth.size()
             size_c = depth_calc.size()
-            print("\n",size)
-            print("\n",size_c)
+            print("\n\n",size)
+            print(size_c)
 
-            print("\nmin_abs_pos =",min_position)
-            print("\nmax_abs_pos =",max_position)
+            max_index = depth_calc.argmax() 
+            max_position = np.unravel_index(max_index.cpu().numpy(), depth_calc.shape)
+            min_index = depth_calc.argmin() 
+            min_position = np.unravel_index(min_index.cpu().numpy(), depth_calc.shape)
+
+            pix_Y = min_position[0]
+            pix_X = min_position[1]
+
+            real2pxel = 0.125/size_c[1]
+
+            #左上角からのmin点の距離[m]
+            Y = pix_Y * real2pxel
+            X = pix_X * real2pxel
+            
+            print("\nmin_calc_pos =",min_position)
+            print("max_calc_pos =",max_position)
+
+            print("\nmin_positon Y,X =",Y,",",X)
 
             print("\nmax =",max,"\nmin =",min,"\nmean =",mean,"\nmedian =",median)
             print("\nabs_max =",abs_max,"\nabs_min =",abs_min,"\nabs_mean =",abs_mean,"\nabs_median =",abs_median)
