@@ -188,15 +188,6 @@ def DepAny():
             max_position = np.unravel_index(max_index.cpu().numpy(), depth_calc.shape)
             min_index = depth_calc.argmin() 
             min_position = np.unravel_index(min_index.cpu().numpy(), depth_calc.shape)
-
-            pix_Y = min_position[0]
-            pix_X = min_position[1]
-
-            real2pxel = 0.125/size_c[1]
-
-            #左上角からのmin点の距離[m]
-            Y = pix_Y * real2pxel
-            X = pix_X * real2pxel
             
             print("\nmin_calc_pos =",min_position)
             print("max_calc_pos =",max_position)
@@ -209,11 +200,8 @@ def DepAny():
             print("\ncalc_max =",calc_max,"\ncalc_min =",calc_min,"\ncalc_mean =",calc_mean,"\ncalc_median =",calc_median)
             
             # 実際にツールを降下させる距離の選定に使うデータ
-            # Movement = DEPTH - (Cam to ToolPosition + Tool length) を想定
             DEPTH = calc_mean
-            Movement = DEPTH - (0.05 + 0.10)
             print("\nDEPTH =",DEPTH)
-            print("Movement =",Movement)
 
             #tranform depth data 
             depth = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
