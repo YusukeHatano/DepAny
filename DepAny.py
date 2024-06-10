@@ -21,7 +21,6 @@ def Capture():
     cap = cv2.VideoCapture(2)
 
     now = datetime.now()
-    print(datetime.now())
     time_id = now.strftime("%H%M%S")
 
     # カメラが正常にオープンされているか確認
@@ -90,17 +89,13 @@ def DepAny():
         args = parser.parse_args()
     
         DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-        print(datetime.now())
 
         print(DEVICE)
     
         #pre-trainedd model
         depth_anything = DepthAnything.from_pretrained('LiheYoung/depth_anything_{}14'.format(args.encoder)).to(DEVICE).eval()
     
-        #situation
-        total_params = sum(param.numel() for param in depth_anything.parameters())
-        print('Total parameters: {:.2f}M'.format(total_params / 1e6))
-    
+
         #resize
         transform = Compose([
             Resize(
