@@ -196,7 +196,7 @@ class Negi():
         max = subject.max().item()
         min = subject.min().item()
         mean =subject.mean().item()
-        print("\nmax =", max,"\nmin = ", min,"\nmean =", mean)
+        print("\nmax =", max,"\nmin =", min,"\nmean =", mean)
 
 run = Negi()
 run.main()
