@@ -1,4 +1,3 @@
-import argparse
 import cv2
 import numpy as np
 import os
@@ -6,218 +5,199 @@ import torch
 import torch.nn.functional as F
 from torchvision.transforms import Compose
 from tqdm import tqdm
-import time
+import matplotlib.pyplot as plt
 from datetime import datetime
 from depth_anything.dpt import DepthAnything
 from depth_anything.util.transform import Resize, NormalizeImage, PrepareForNet
+import argparse
 
+class Negi():
+    def main(self):
+        self.Capture(2)
+        self.DepAny()
 
-def toBytes(message):
-     
-     return bytes(message.encode())
+    def __init__(self):
+        self.time = None 
+        self.frame = None # raw image
+        self.cropped_frame = None # cropped image
+        # picture_pixel
+        self.y_min = 90
+        self.y_max = 270
+        self.x_min = 150
+        self.x_max = 300
+        # calculate_pixel
+        self.yc_min = None
+        self.yc_max = None
+        self.xc_min = None
+        self.xc_max = None
+        # for distance to define DEPTH range
+        self.Cam_to_Top = 0.475
+        self.Top_to_Plate = 0.120
+        # file Dirctories
+        self.filenemes = None
+        self.indir = None # raw image　dirctory
+        self.outdir = None # output depth image dirctory
+        self.depth = None # depth Tensor
+        self.depth_abs = None # meter distance from camera
+        self.depth_calc = None # only Negi
+        self.DEPTH = None # for move
+        # xy position
+        self.max_Pos = None
+        self.min_Pos = None
 
-
-def Capture(): 
-    cap = cv2.VideoCapture(2)
-
-    now = datetime.now()
-    time_id = now.strftime("%H%M%S")
-
-    # カメラが正常にオープンされているか確認
-    if not cap.isOpened():
-        print("カメラが見つかりません。")
-        exit()
-
-    ret, frame = cap.read()
-
-    # 相対値固定のため、余分な範囲を計算しないような画像のトリム設定
-    ystart = 170
-    yfinish= 375
-    hight = yfinish -ystart
-    xstart = 245
-    xfinish = 360
-    width = xfinish - xstart
-    
-    cropped_frame = frame[ystart:ystart+hight, xstart:xstart+width]
-
-    if ret:
-        # Specify the file name
-        ext = ".jpg"
-        file_name = str(time_id) + ext
-        # Join the save directory path and file name
-        global indir
-        global outdir
-
-        indir = "C:\\Users\\space\\Depth-Anything\\"
-        outdir = indir
-        indir = indir + "Test\\"
-        outdir = outdir + "Tested\\"
-        year = str(now.strftime("%Y"))
-        time = str(now.strftime("%H%M%S"))
-        month = str(now.strftime("%m"))
-        day = str(now.strftime("%m%d"))
-       
-
-        indir = indir + year + "\\" + month + "\\" + day + "\\" + time
-        outdir = outdir + year + "\\" + month + "\\" + day + "\\" + time
-
-
-        if not os.path.exists(indir):
-            os.makedirs(indir)
+    def Loading(self,dir):
+        if os.path.isfile(dir):
+            if self.outdir.endswith('txt'):
+                with open(dir, 'r') as f:
+                    self.filenames = f.read().splitlines()
+            else:
+                self.filenames = [dir]
         else:
-            pass
+            self.filenames = os.listdir(dir)
+            self.filenames = [os.path.join(dir, filename) for filename in self.filenames if not filename.startswith('.')]
+            self.filenames.sort()
 
-        save_path = os.path.join(indir,file_name)
-        # Save the captured frame to the specified directory
-        cv2.imwrite(save_path,cropped_frame)
+    def Trimming(self,y1,y2,x1,x2,subject):
+        h = y2 - y1
+        w = x2 - x1
+        return subject[y1:y1+h, x1:x1+w]
+
+    def TimeDir(self):
+        ext = ".jpg"
+        file_name = str(self.time.strftime("%H%M%S")) + ext
+        self.filename = file_name
+
+        self.indir = os.getcwd()
+        self.outdir = os.getcwd()
+        self.indir =  self.indir + "\\Test\\"
+        self.outdir = self.outdir + "\\Tested\\"
+        self.indir = self.indir + str(self.time.strftime("%Y")) + "\\" + str(self.time.strftime("%m"))  + \
+                "\\" + str(self.time.strftime("%m%d"))  + "\\" + str(self.time.strftime("%H%M%S")) 
+        self.outdir = self.outdir + str(self.time.strftime("%Y")) + "\\" + str(self.time.strftime("%m"))  + \
+                "\\" + str(self.time.strftime("%m%d"))  + "\\" + str(self.time.strftime("%H%M%S")) 
+
+        os.makedirs(self.indir, exist_ok=True)
+        os.makedirs(self.outdir, exist_ok=True)
+        save_path = os.path.join(self.indir, file_name)
+        cv2.imwrite(save_path, self.cropped_frame)
         print("Image captured and saved successfully at:", save_path)
-    else:
-        print("Failed to capture image.")
-    
-    # Release the camera
-    cap.release()
 
-    
+    def Capture(self,number):
+        cap = cv2.VideoCapture(number)
+        self.time = datetime.now()
+        print(datetime.now())
 
-def DepAny():
-    if __name__ == '__main__':
+        if not cap.isOpened():
+            print("カメラが見つかりません。")
+            exit()
+
+        ret, self.frame = cap.read()
+        # Trimming
+        self.cropped_frame = self.Trimming(self.y_min, self.y_max, self.x_min, self.y_max, self.frame)
+        if ret:
+            self.TimeDir()
+            print("success")
+        else:
+            print("Failed to capture image.")
+
+        cap.release()
+
+    def Edge(self):
+        # Loading Image
+        self.Loading(self.outdir)
+
+        for filename in tqdm(self.filenames,disable = True):
+            # エッジ検出
+            frame = cv2.imread(filename)
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            edges = cv2.Canny(gray, 100, 200)
+            coords = np.column_stack(np.where(edges > 0))
+            self.yc_min, self.xc_min = coords.min(axis=0)
+            self.yc_max, self.xc_max = coords.max(axis=0)
+            print("\nyrange = ", self.yc_min, "to", self.yc_max)
+            print("xrange = ", self.xc_min, "to", self.xc_max)
+
+            #グラフプロット  
+            plt.plot(figsize=(edges.shape[1] / 100, edges.shape[0] / 100), dpi=100)
+            plt.imshow(edges, cmap='gray')
+            plt.axis('off')  
+            plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+            path = os.path.join(self.outdir,"edge.png")
+            plt.savefig(path)
+            print("\nedge success")
+
+    def DepAny(self):
         parser = argparse.ArgumentParser()
         parser.add_argument('--encoder', type=str, default='vitl', choices=['vits', 'vitb', 'vitl'])
-        parser.add_argument('--pred-only', dest='pred_only', action='store_true', help='only display the prediction')
-        parser.add_argument('--grayscale', dest='grayscale', action='store_true', help='do not apply colorful palette')
-    
-        args = parser.parse_args()
-    
+        args = parser.parse_args()    
         DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-
         print(DEVICE)
     
-        #pre-trainedd model
         depth_anything = DepthAnything.from_pretrained('LiheYoung/depth_anything_{}14'.format(args.encoder)).to(DEVICE).eval()
     
-
-        #resize
         transform = Compose([
             Resize(
                 width=518,
                 height=518,
-                resize_target=False,
-                keep_aspect_ratio=True,
-                ensure_multiple_of=14,
+                resize_target = False,
+                keep_aspect_ratio = True,
+                ensure_multiple_of = 14,
                 resize_method='lower_bound',
-                image_interpolation_method=cv2.INTER_CUBIC,
+                image_interpolation_method = cv2.INTER_CUBIC,
             ),
-            NormalizeImage(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            NormalizeImage(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225]),
             PrepareForNet(),
-            ])
+        ])
 
         # reading file
-        if os.path.isfile(indir):
-            if indir.endswith('txt'):
-                with open(indir, 'r') as f:
-                    filenames = f.read().splitlines()
-            else:
-                filenames = [indir]
-        else:
-            filenames = os.listdir(indir)
-            filenames = [os.path.join(indir, filename) for filename in filenames if not filename.startswith('.')]
-            filenames.sort()
-    
-        #make directory
-        os.makedirs(outdir, exist_ok=True)
-    
-        for filename in tqdm(filenames):
+        self.Loading(self.indir)
+
+        for filename in tqdm(self.filenames,disable = True):
             raw_image = cv2.imread(filename)
             image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGB) / 255.0
-        
             h, w = image.shape[:2]
-        
             image = transform({'image': image})['image']
             image = torch.from_numpy(image).unsqueeze(0).to(DEVICE)
         
             with torch.no_grad():
                 depth = depth_anything(image)
                 depth = F.interpolate(depth[None], (h, w), mode='bilinear', align_corners=False)[0, 0]
-
-
-            # relative depth tensor
-            mean =depth.mean().item()
-            max = depth.max().item()
-            min = depth.min().item()
-            median = depth.mean().item()
-
-            Cam_to_Top = float(0.475) # User Difined Parameter[m]
-            Top_to_Plate = float(0.090) # User Difined Parameter[m]
-
-
-            # meter depth tensor
-            depth_abs = (depth - depth.min()) / (depth.max() - depth.min()) *Top_to_Plate
-
-            abs_max = Cam_to_Top + Top_to_Plate - depth_abs.min().item()
-            abs_min = Cam_to_Top + Top_to_Plate - depth_abs.max().item()
-            abs_mean = Cam_to_Top + Top_to_Plate - depth_abs.mean().item()
-            abs_median = Cam_to_Top + Top_to_Plate - depth_abs.median().item()
-
-            # 降下距離導出のためネギ部分のみを切り取り
-            ycstart = 0
-            ycfinish = 100
-            hc = ycfinish - ycstart
-            xcstart = 10
-            xcfinish = 110
-            wc = xcfinish - xcstart
-
-
-            depth_calc = depth_abs[ycstart:ycstart+hc,xcstart:xcstart+wc]
-            calc_max = Cam_to_Top + Top_to_Plate - depth_calc.min().item()
-            calc_min = Cam_to_Top + Top_to_Plate - depth_calc.max().item()
-            calc_median = Cam_to_Top + Top_to_Plate - depth_calc.mean().item()
-            calc_mean = Cam_to_Top + Top_to_Plate - depth_calc.median().item()
-
-
-            size = depth.size()
-            size_c = depth_calc.size()
-            print("\n\n",size)
-            print(size_c)
-
-            max_index = depth_calc.argmax() 
-            max_position = np.unravel_index(max_index.cpu().numpy(), depth_calc.shape)
-            min_index = depth_calc.argmin() 
-            min_position = np.unravel_index(min_index.cpu().numpy(), depth_calc.shape)
-            
-            print("\nmin_calc_pos =",min_position)
-            print("max_calc_pos =",max_position)
-
-            print("\nmin_positon Y,X =",Y,",",X)
-
-            print("\nmax =",max,"\nmin =",min,"\nmean =",mean,"\nmedian =",median)
-            print("\nabs_max =",abs_max,"\nabs_min =",abs_min,"\nabs_mean =",abs_mean,"\nabs_median =",abs_median)
-
-            print("\ncalc_max =",calc_max,"\ncalc_min =",calc_min,"\ncalc_mean =",calc_mean,"\ncalc_median =",calc_median)
-            
-            # 実際にツールを降下させる距離の選定に使うデータ
-            DEPTH = calc_mean
-            print("\nDEPTH =",DEPTH)
+                self.depth = depth
+                self.Analyse_Tensor(self.depth)
 
             #tranform depth data 
             depth = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
-        
             depth = depth.cpu().numpy().astype(np.uint8)
-
-            #gray scale option
-            if args.grayscale:
-                depth = np.repeat(depth[..., np.newaxis], 3, axis=-1)
-            else:
-                depth = cv2.applyColorMap(depth, cv2.COLORMAP_INFERNO)
-
-
-        
+            depth = cv2.applyColorMap(depth, cv2.COLORMAP_INFERNO)
             #readed filename 
             filename = os.path.basename(filename)
-        
-            cv2.imwrite(os.path.join(outdir, filename[:filename.rfind('.')] + '_depth.png'), depth)
-               
-            print("\n",datetime.now())
+            cv2.imwrite(os.path.join(self.outdir, filename[:filename.rfind('.')] + '_depth.png'), depth)
 
+            #エッジ検出
+            self.Edge()
+            
+            # meter depth tensor
+            self.depth_abs = torch.full(self.depth.size(), (self.Cam_to_Top + self.Top_to_Plate)) - \
+                             (self.depth - self.depth.min()) / (self.depth.max() - self.depth.min()) *self.Top_to_Plate
+            self.Analyse_Tensor(self.depth_abs)
+            # Trimming
+            self.depth_calc = self.Trimming(self.yc_min,self.yc_max,self.xc_min,self.xc_max,self.depth_abs)
+            self.Analyse_Tensor(self.depth_calc)
+            self.DEPTH = self.depth_calc.mean().item()
 
-Capture()
-DepAny()
+            max_index = self.depth_calc.argmax() 
+            self.max_position = np.unravel_index(max_index.cpu().numpy(), self.depth_calc.shape)
+            min_index = self.depth_calc.argmin() 
+            self.min_position = np.unravel_index(min_index.cpu().numpy(), self.depth_calc.shape)
+            print("\nmin_calc_pos =",self.min_position,"\nmax_calc_pos =", self.max_position)
+            # 実際にツールを降下させる距離の選定に使うデータ
+            print("\nDEPTH =",self.DEPTH)
+
+    def Analyse_Tensor(self,subject):
+        max = subject.max().item()
+        min = subject.min().item()
+        mean =subject.mean().item()
+        print("\nmax =", max,"\nmin = ", min,"\nmean =", mean)
+
+run = Negi()
+run.main()
