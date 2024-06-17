@@ -17,6 +17,7 @@ class Negi():
         self.DepAny()
 
     def __init__(self):
+        self.filenames = None
         self.time = None 
         self.frame = None # raw image
         self.cropped_frame = None # cropped image
@@ -33,8 +34,6 @@ class Negi():
         # for distance to define DEPTH range
         self.Cam_to_Top = 0.475
         self.Top_to_Plate = 0.120
-        # file Dirctories
-        self.filenemes = None
         self.indir = None # raw image　dirctory
         self.outdir = None # output depth image dirctory
         self.depth = None # depth Tensor
@@ -47,7 +46,7 @@ class Negi():
 
     def Loading(self,dir):
         if os.path.isfile(dir):
-            if self.outdir.endswith('txt'):
+            if dir.endswith('txt'):
                 with open(dir, 'r') as f:
                     self.filenames = f.read().splitlines()
             else:
@@ -65,7 +64,6 @@ class Negi():
     def TimeDir(self):
         ext = ".jpg"
         file_name = str(self.time.strftime("%H%M%S")) + ext
-        self.filename = file_name
 
         self.indir = os.getcwd()
         self.outdir = os.getcwd()
@@ -112,8 +110,8 @@ class Negi():
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             edges = cv2.Canny(gray, 100, 200)
             coords = np.column_stack(np.where(edges > 0))
-            self.yc_min, self.xc_min = coords.min(axis=0)
-            self.yc_max, self.xc_max = coords.max(axis=0)
+            self.yc_min, self.xc_min = coords.min(axis=0) - (10,10)
+            self.yc_max, self.xc_max = coords.max(axis=0) + (10,10)
             print("\nyrange = ", self.yc_min, "to", self.yc_max)
             print("xrange = ", self.xc_min, "to", self.xc_max)
 
@@ -192,6 +190,7 @@ class Negi():
             print("\nmin_calc_pos =",self.min_position,"\nmax_calc_pos =", self.max_position)
             # 実際にツールを降下させる距離の選定に使うデータ
             print("\nDEPTH =",self.DEPTH)
+            print(datetime.now())
 
     def Analyse_Tensor(self,subject):
         max = subject.max().item()
