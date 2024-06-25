@@ -29,7 +29,7 @@ class Negi():
         self.frame = self.cropped_frame = None # raw image & cropped image
         # pixel
         self.y_min , self.y_max = 100 , 280
-        self.x_min , self.x_max = 130 , 800
+        self.x_min , self.x_max = 150 , 350
         self.yc_min = self.yc_max = self.xc_min = self.xc_max = None
         self.Cam_to_Plate , self.Top_to_Plate= 0.595 , 0.120
         self.indir = self.outdir = None # raw image & output image
@@ -62,7 +62,7 @@ class Negi():
             exit()
         ret, self.frame = cap.read()
         if ret:
-            self.cropped_frame = self.Trimming(self.y_min, self.y_max, self.x_min, self.y_max, self.frame)
+            self.cropped_frame = self.Trimming(self.y_min, self.y_max, self.x_min, self.x_max, self.frame)
             self.TimeDir(self.cropped_frame)
             print("success")
         else:
@@ -116,7 +116,7 @@ class Negi():
             self.min_position = np.unravel_index(min_index.cpu().numpy(), self.depth_calc.shape)
 
             print("\nmin_calc_pos =",self.min_position,"\nmax_calc_pos =", self.max_position)
-            print("\nDEPTH =",self.DEPTH)
+            print("\n",self.DEPTH)
             print(datetime.now())
     
     def Edge(self,subject):
